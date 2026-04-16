@@ -1,2 +1,68 @@
-node_modules/
-.env
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build directories
+build/
+dist/
+target/
+out/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+*.iws
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+*.log.*
+
+# Maven files
+dependency-reduced-pom.xml
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+release-pom.xml
+
+# Gradle files
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# IntelliJ
+.idea
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+launch.json
+settings.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Project specific
+patients.txt
+symptoms.txt
+appointments.txt
+*.txt.bak
