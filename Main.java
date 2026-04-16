@@ -121,7 +121,7 @@ public class Main {
 
         p.addAppointment(app);
 
-        // 🔥 Parametric Polymorphism usage
+        // Parametric Polymorphism usage
         DataBox<Appointment> box = new DataBox<>();
         box.set(app);
 
