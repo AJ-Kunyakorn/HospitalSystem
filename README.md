@@ -1,6 +1,6 @@
-# Healthcare Appointment System
+# Hospital Appointment System
 
-A professional Java console application for managing patient appointments with guest and registered user workflows.
+A Java console application for managing patient appointments with guest and registered user workflows.
 
 ## Project Structure
 
