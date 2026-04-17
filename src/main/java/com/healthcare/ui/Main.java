@@ -1,7 +1,9 @@
 package com.healthcare.ui;
 
+
 import java.time.LocalDate;
 import java.util.Scanner;
+
 
 import com.healthcare.exceptions.InvalidAppointmentException;
 import com.healthcare.models.Appointment;
@@ -11,6 +13,7 @@ import com.healthcare.models.Patient;
 import com.healthcare.models.SymptomForm;
 import com.healthcare.repository.DataRepository;
 import com.healthcare.utils.ValidationUtils;
+
 
 /**
  * Console application demonstrating patient appointment workflows.
@@ -28,10 +31,12 @@ public class Main {
             DataRepository<SymptomForm> symptomRepository = new DataRepository<>();
             DataRepository<Appointment> appointmentRepository = new DataRepository<>();
 
+
             // Load existing data from files
             patientRepository.loadFromFile("patients.txt", Main::parsePatient);
             symptomRepository.loadFromFile("symptoms.txt", Main::parseSymptomForm);
             appointmentRepository.loadFromFile("appointments.txt", Main::parseAppointment);
+
 
             // Add shutdown hook to save data on unexpected termination
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -39,8 +44,10 @@ public class Main {
                 saveAll(patientRepository, symptomRepository, appointmentRepository);
             }));
 
+
             System.out.println("=== Appointment Console System ===");
             boolean appRunning = true;
+
 
             while (appRunning) {
                 Patient currentPatient = null;
@@ -53,6 +60,7 @@ public class Main {
                     System.out.println("   (New patients create an account with email and password.)");
                     System.out.println("4. Exit");
                     int choice = ValidationUtils.getValidatedInteger(scanner, "Select option: ", 1, 4);
+
 
                     switch (choice) {
                         case 1:
@@ -74,26 +82,27 @@ public class Main {
                     }
                 }
 
+
                 if (!appRunning) {
                     break;
                 }
+                SymptomForm currentForm = null;
 
-                // Mandatory symptom submission before accessing menu
-                SymptomForm currentForm = submitSymptomForm(scanner, currentPatient);
-                symptomRepository.add(currentForm);
 
                 Appointment appointment = null;
                 if (currentPatient.isGuest()) {
-                    appointment = scheduleGuestAppointment(currentPatient, appointmentRepository);
+                    appointment = scheduleGuestAppointment(scanner, currentPatient, appointmentRepository, currentForm);
                 }
                 if (appointment == null) {
                     appointment = findAppointmentForPatient(appointmentRepository, currentPatient.getId());
                 }
 
+
                 String displayFirstName = ValidationUtils.capitalizeName(currentPatient.getFirstName());
                 String displayLastName = ValidationUtils.capitalizeName(currentPatient.getLastName());
                 System.out.println("\nWelcome, " + displayFirstName + " " + displayLastName + (currentPatient.isGuest() ? " (Guest)" : "") + "!");
                 System.out.println("Symptom details submitted. You can update them from the menu.");
+
 
                 boolean sessionActive = true;
                 while (sessionActive) {
@@ -116,6 +125,7 @@ public class Main {
                     }
                     int selection = ValidationUtils.getValidatedInteger(scanner, "Select option: ", 1, maxOption);
 
+
                     if (currentPatient.isGuest()) {
                         switch (selection) {
                             case 1:
@@ -133,7 +143,7 @@ public class Main {
                                     System.out.println("No appointment found.");
                                     break;
                                 }
-                                currentPatient = reviewAppointment(scanner, appointment, currentPatient, patientRepository);
+                                currentPatient = reviewAppointment(scanner, appointment, currentPatient, patientRepository, symptomRepository);
                                 break;
                             case 3:
                                 System.out.println("Logging out. Returning to the login menu.");
@@ -152,8 +162,12 @@ public class Main {
                     } else {
                         switch (selection) {
                             case 1: {
-                                updateSymptomForm(scanner, currentForm);
-                                System.out.println("Symptom form updated.");
+                                if (currentForm == null) {
+                                currentForm = submitSymptomForm(scanner, currentPatient);
+                                symptomRepository.add(currentForm);
+                                } else {
+                                    updateSymptomForm(scanner, currentForm);
+                                }
                                 break;
                             }
                             case 2:
@@ -164,6 +178,11 @@ public class Main {
                                     "Enter desired appointment date (YYYY-MM-DD) [Earliest: " + LocalDate.now() + "]: ");
                                 appointment.setAppointmentDate(appointmentDate.toString());
                                 appointment.proposeTime("10:00 AM");
+
+
+                                appointment.setSymptomForm(currentForm);
+
+
                                 if (!appointmentRepository.getAll().contains(appointment)) {
                                     appointmentRepository.add(appointment);
                                 }
@@ -174,7 +193,7 @@ public class Main {
                                     System.out.println("No appointment found. Please choose a date first.");
                                     break;
                                 }
-                                currentPatient = reviewAppointment(scanner, appointment, currentPatient, patientRepository);
+                                currentPatient = reviewAppointment(scanner, appointment, currentPatient, patientRepository, symptomRepository);
                                 break;
                             case 4:
                                 System.out.println("Logging out. Returning to the login menu.");
@@ -194,9 +213,11 @@ public class Main {
                 }
             }
 
+
             saveAll(patientRepository, symptomRepository, appointmentRepository);
         }
     }
+
 
     /**
      * Prompts the user to log in as a guest and creates a guest patient.
@@ -210,11 +231,13 @@ public class Main {
         String lastName = ValidationUtils.getValidatedName(scanner, "Enter last name: ");
         String idNumber = ValidationUtils.getValidatedNonEmptyString(scanner, "Enter guest ID number: ", "Guest ID number cannot be empty.");
 
+
         GuestUser guestUser = new GuestUser(getNextGuestId(patientRepository), firstName, lastName, idNumber);
         Patient patient = guestUser.enterDetails();
         patientRepository.add(patient);
         return patient;
     }
+
 
     /**
      * Prompts the user to log in as an existing patient.
@@ -225,6 +248,7 @@ public class Main {
      */
     private static Patient loginAsPatient(Scanner scanner, DataRepository<Patient> patientRepository) {
         String email = ValidationUtils.getValidatedEmail(scanner, "Enter email: ");
+
 
         Patient existingPatient = findPatientByEmail(patientRepository, email);
         if (existingPatient != null) {
@@ -238,9 +262,11 @@ public class Main {
             return null;
         }
 
+
         System.out.println("No patient account found with that email. Please register as a new patient.");
         return null;
     }
+
 
     /**
      * Prompts the user to register as a new patient.
@@ -252,11 +278,13 @@ public class Main {
     private static Patient registerAsPatient(Scanner scanner, DataRepository<Patient> patientRepository) {
         String email = ValidationUtils.getValidatedEmail(scanner, "Enter email: ");
 
+
         // Verify email doesn't already exist
         if (findPatientByEmail(patientRepository, email) != null) {
             System.out.println("Error: An account with that email already exists. Please login instead.");
             return null;
         }
+
 
         String firstName = ValidationUtils.getValidatedName(scanner, "Enter first name: ");
         String lastName = ValidationUtils.getValidatedName(scanner, "Enter last name: ");
@@ -264,11 +292,13 @@ public class Main {
         String password = ValidationUtils.getValidatedNonEmptyString(scanner, "Enter password: ", "Password cannot be empty.");
         String idNumber = ValidationUtils.getValidatedNonEmptyString(scanner, "Enter ID number: ", "ID number cannot be empty.");
 
+
         Patient patient = new Patient(getNextPatientId(patientRepository), firstName, lastName, phone, email, password, idNumber, false);
         patientRepository.add(patient);
         System.out.println("Patient account registered successfully.");
         return patient;
     }
+
 
     private static Patient findPatientByEmail(DataRepository<Patient> patientRepository, String email) {
         for (Patient patient : patientRepository.getAll()) {
@@ -278,6 +308,7 @@ public class Main {
         }
         return null;
     }
+
 
     /**
      * Collects symptom information from the patient.
@@ -293,6 +324,7 @@ public class Main {
         return new SymptomForm(patient.getId(), symptoms, description, severity);
     }
 
+
     private static void updateSymptomForm(Scanner scanner, SymptomForm form) {
         System.out.println("Update the current symptom form. Leave blank to keep the current value.");
         System.out.println("Current symptoms: " + form.getSymptoms());
@@ -302,12 +334,14 @@ public class Main {
             form.setSymptoms(form.getSymptoms() + "; " + moreSymptoms);
         }
 
+
         System.out.println("Current description: " + form.getDescription());
         System.out.print("Enter additional details: ");
         String moreDetails = scanner.nextLine().trim();
         if (!moreDetails.isEmpty()) {
             form.setDescription(form.getDescription() + " " + moreDetails);
         }
+
 
         System.out.println("Current severity: " + form.getSeverity());
         System.out.print("Enter severity (Low/Medium/High) or leave blank to keep current: ");
@@ -336,16 +370,35 @@ public class Main {
         }
     }
 
+
     private static void printDivider() {
         System.out.println("\n----------------------------------------");
     }
 
-    private static Appointment scheduleGuestAppointment(Patient guestPatient, DataRepository<Appointment> appointmentRepository) {
-        Appointment appointment = new Appointment(getNextAppointmentId(appointmentRepository), guestPatient.getId(), LocalDate.now().toString(), "10:00 AM");
-        appointment.proposeTime("10:00 AM");
-        appointmentRepository.add(appointment);
-        return appointment;
-    }
+
+    private static Appointment scheduleGuestAppointment(Scanner scanner,Patient guestPatient, DataRepository<Appointment> appointmentRepository, SymptomForm currentForm) {
+    LocalDate appointmentDate = ValidationUtils.getValidatedDate(
+        scanner,
+        "Enter desired appointment date (YYYY-MM-DD): "
+    );
+
+
+    Appointment appointment = new Appointment(
+        getNextAppointmentId(appointmentRepository),
+        guestPatient.getId(),
+        appointmentDate.toString(),
+        ""
+    );
+
+
+    appointment.proposeTime("10:00 AM");
+    appointment.setSymptomForm(currentForm);
+    appointmentRepository.add(appointment);
+
+
+    return appointment;
+}
+
 
     private static Patient offerGuestPromotion(Scanner scanner, Patient guestPatient, DataRepository<Patient> patientRepository) {
         System.out.print("Would you like to register as a Patient to save this record? (Y/N): ");
@@ -356,6 +409,7 @@ public class Main {
         return guestPatient;
     }
 
+
     private static Patient registerGuestAsPatient(Scanner scanner, Patient guestPatient, DataRepository<Patient> patientRepository) {
         String email = ValidationUtils.getValidatedEmail(scanner, "Enter email for your new account: ");
         if (findPatientByEmail(patientRepository, email) != null) {
@@ -363,8 +417,10 @@ public class Main {
             return guestPatient;
         }
 
+
         String phone = ValidationUtils.getValidatedPhone(scanner, "Enter phone: ");
         String password = ValidationUtils.getValidatedNonEmptyString(scanner, "Enter password: ", "Password cannot be empty.");
+
 
         Patient patient = new Patient(getNextPatientId(patientRepository), guestPatient.getFirstName(), guestPatient.getLastName(), phone,
             email, password, guestPatient.getIdNumber(), false);
@@ -372,6 +428,7 @@ public class Main {
         System.out.println("Patient account registered successfully.");
         return patient;
     }
+
 
     private static int getNextGuestId(DataRepository<Patient> patientRepository) {
         int maxId = 0;
@@ -383,6 +440,7 @@ public class Main {
         return maxId + 1;
     }
 
+
     private static int getNextPatientId(DataRepository<Patient> patientRepository) {
         int maxId = 0;
         for (Patient patient : patientRepository.getAll()) {
@@ -392,6 +450,7 @@ public class Main {
         }
         return maxId + 1;
     }
+
 
     private static int getNextAppointmentId(DataRepository<Appointment> appointmentRepository) {
         int maxId = 0;
@@ -403,6 +462,7 @@ public class Main {
         return maxId + 1;
     }
 
+
     /**
      * Displays the proposed appointment and lets the patient accept or reject it.
      *
@@ -412,25 +472,45 @@ public class Main {
      * @param patientRepository repository for patients
      * @return the updated patient (may change if promoted from guest)
      */
-    private static Patient reviewAppointment(Scanner scanner, Appointment appointment, Patient currentPatient, DataRepository<Patient> patientRepository) {
+    private static Patient reviewAppointment(Scanner scanner, Appointment appointment, Patient currentPatient, DataRepository<Patient> patientRepository, DataRepository<SymptomForm> symptomRepository) {
+        SymptomForm form =appointment.getSymptomForm();
+
+
+        if (form == null) {
+            form = findSymptomByPatientId(symptomRepository, currentPatient.getId());
+        }
+
+
+        System.out.println("\n--- Symptom Details ---");
+            if (form != null) {
+                System.out.println("Symptoms: " + form.getSymptoms());
+                System.out.println("Description: " + form.getDescription());
+                System.out.println("Severity: " + form.getSeverity());
+            } else {
+            System.out.println("No symptom information found.");
+            }
         System.out.println("\nCurrent Appointment");
         System.out.println("Date: " + appointment.getAppointmentDate());
         System.out.println("Proposed time: " + appointment.getProposedTime());
         System.out.println("Status: " + appointment.getStatus());
+
 
         if (appointment.getStatus() == AppointmentStatus.CONFIRMED) {
             System.out.println("This appointment is already confirmed.");
             return currentPatient;
         }
 
+
         if (appointment.getStatus() != AppointmentStatus.TIME_PROPOSED) {
             System.out.println("No proposed appointment time is available. Please submit a symptom form or choose a date first.");
             return currentPatient;
         }
 
+
         System.out.println("1. Accept");
         System.out.println("2. Reject");
         int response = ValidationUtils.getValidatedInteger(scanner, "Choose option: ", 1, 2);
+
 
         switch (response) {
             case 1:
@@ -461,6 +541,7 @@ public class Main {
         return currentPatient;
     }
 
+
     /**
      * Persists all repository data to disk.
      *
@@ -477,6 +558,7 @@ public class Main {
         appointmentRepository.saveToFile("appointments.txt");
         System.out.println("Data saved to patients.txt, symptoms.txt, appointments.txt");
     }
+
 
     /**
      * Parses a Patient object from a comma-separated string.
@@ -502,6 +584,7 @@ public class Main {
         }
     }
 
+
     /**
      * Parses a SymptomForm object from a comma-separated string.
      *
@@ -521,6 +604,7 @@ public class Main {
             return null;
         }
     }
+
 
     /**
      * Parses an Appointment object from a comma-separated string.
@@ -550,6 +634,7 @@ public class Main {
         }
     }
 
+
     private static Appointment findAppointmentForPatient(DataRepository<Appointment> appointmentRepository, int patientId) {
         for (Appointment app : appointmentRepository.getAll()) {
             if (app.getPatientId() == patientId) {
@@ -558,4 +643,20 @@ public class Main {
         }
         return null;
     }
+
+
+    private static SymptomForm findSymptomByPatientId(DataRepository<SymptomForm> repo, int patientId) {
+        SymptomForm latest = null;
+
+
+    for (SymptomForm form : repo.getAll()) {
+        if (form.getPatientId() == patientId) {
+            latest = form; // keep ล่าสุด
+        }
+    }
+
+
+    return latest;
 }
+}
+

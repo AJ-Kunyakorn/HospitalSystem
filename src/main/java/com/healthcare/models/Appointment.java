@@ -17,6 +17,7 @@ public class Appointment {
     private String appointmentDate;
     private String proposedTime;
     private AppointmentStatus status;
+    private SymptomForm symptomForm;
 
     /**
      * Constructor for Appointment.
@@ -216,5 +217,13 @@ public class Appointment {
     @Override
     public String toString() {
         return appointmentId + "," + patientId + "," + appointmentDate + "," + proposedTime + "," + status;
+    }
+
+    public SymptomForm getSymptomForm() {
+        return symptomForm;
+    }
+
+    public void setSymptomForm(SymptomForm symptomForm) {
+        this.symptomForm = symptomForm;
     }
 }
