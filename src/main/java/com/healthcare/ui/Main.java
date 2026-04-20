@@ -91,7 +91,7 @@ public class Main {
 
                 Appointment appointment = null;
                 if (currentPatient.isGuest()) {
-                    appointment = scheduleGuestAppointment(scanner, currentPatient, appointmentRepository, currentForm);
+                    appointment = scheduleGuestAppointment(scanner, currentPatient, appointmentRepository);
                 }
                 if (appointment == null) {
                     appointment = findAppointmentForPatient(appointmentRepository, currentPatient.getId());
@@ -101,7 +101,11 @@ public class Main {
                 String displayFirstName = ValidationUtils.capitalizeName(currentPatient.getFirstName());
                 String displayLastName = ValidationUtils.capitalizeName(currentPatient.getLastName());
                 System.out.println("\nWelcome, " + displayFirstName + " " + displayLastName + (currentPatient.isGuest() ? " (Guest)" : "") + "!");
-                System.out.println("Symptom details submitted. You can update them from the menu.");
+                if (currentPatient.isGuest()) {
+                    System.out.println("Symptom details submitted.");
+                } else {
+                    System.out.println("Symptom details submitted. You can update them from the menu.");
+                }
 
 
                 boolean sessionActive = true;
@@ -376,28 +380,26 @@ public class Main {
     }
 
 
-    private static Appointment scheduleGuestAppointment(Scanner scanner,Patient guestPatient, DataRepository<Appointment> appointmentRepository, SymptomForm currentForm) {
-    LocalDate appointmentDate = ValidationUtils.getValidatedDate(
-        scanner,
-        "Enter desired appointment date (YYYY-MM-DD): "
-    );
+    private static Appointment scheduleGuestAppointment(Scanner scanner, Patient guestPatient, DataRepository<Appointment> appointmentRepository) {
+        SymptomForm symptomForm = submitSymptomForm(scanner, guestPatient);
+        LocalDate appointmentDate = ValidationUtils.getValidatedDate(
+            scanner,
+            "Enter desired appointment date (YYYY-MM-DD): "
+        );
 
+        Appointment appointment = new Appointment(
+            getNextAppointmentId(appointmentRepository),
+            guestPatient.getId(),
+            appointmentDate.toString(),
+            ""
+        );
 
-    Appointment appointment = new Appointment(
-        getNextAppointmentId(appointmentRepository),
-        guestPatient.getId(),
-        appointmentDate.toString(),
-        ""
-    );
+        appointment.proposeTime("10:00 AM");
+        appointment.setSymptomForm(symptomForm);
+        appointmentRepository.add(appointment);
 
-
-    appointment.proposeTime("10:00 AM");
-    appointment.setSymptomForm(currentForm);
-    appointmentRepository.add(appointment);
-
-
-    return appointment;
-}
+        return appointment;
+    }
 
 
     private static Patient offerGuestPromotion(Scanner scanner, Patient guestPatient, DataRepository<Patient> patientRepository) {
